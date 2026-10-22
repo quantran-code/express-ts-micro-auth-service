@@ -1,5 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
+import type { RequestHandler } from 'express';
 import { HttpError } from './errors/httpError';
+import { requireServiceKey } from './middleware/requireServiceKey';
+import { authRouter } from './routes/auth';
 
 const app = express();
 
@@ -9,7 +12,17 @@ app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', service: 'auth-service' });
 });
 
-// TODO: mount this service's routes here once implemented.
+const serviceKeyGate: RequestHandler = (req, res, next) => {
+  if (req.path === '/health') {
+    next();
+    return;
+  }
+
+  requireServiceKey(req, res, next);
+};
+
+app.use(serviceKeyGate);
+app.use('/auth', authRouter);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({ error: 'Not Found' });
