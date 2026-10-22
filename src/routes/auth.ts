@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
-import { createMember } from '../clients/memberService';
+import { createMember, deactivateMember } from '../clients/memberService';
 import { HttpError } from '../errors/httpError';
 import { DUMMY_PASSWORD_HASH, hashPassword, verifyPassword } from '../lib/passwords';
 import { signAccessToken } from '../lib/tokens';
-import { createUser, findUserByEmail } from '../repositories/userRepository';
+import { createUser, findUserByEmail, findUserByMemberId } from '../repositories/userRepository';
 import type { UserRole } from '../repositories/userRepository';
 
 export interface RegisterBody {
@@ -76,6 +76,7 @@ export const registerHandler: RequestHandler<Record<string, never>, unknown, Reg
       name: name.trim(),
       email: user.email,
       role: user.role,
+      active: user.active,
     });
   } catch (err) {
     next(err);
@@ -117,6 +118,10 @@ export const loginHandler: RequestHandler<Record<string, never>, unknown, LoginB
       throw new HttpError(401, 'Invalid credentials');
     }
 
+    if (!user.active) {
+      throw new HttpError(401, 'Account is deactivated');
+    }
+
     const accessToken = signAccessToken(user);
 
     res.status(200).json({
@@ -129,7 +134,48 @@ export const loginHandler: RequestHandler<Record<string, never>, unknown, LoginB
   }
 };
 
+export interface DeactivateMemberParams {
+  id: string;
+}
+
+export const deactivateMemberHandler: RequestHandler<DeactivateMemberParams> = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    if (req.header('x-user-role') !== 'librarian') {
+      throw new HttpError(403, 'Only a librarian can deactivate an account');
+    }
+
+    const memberId = Number(req.params.id);
+    if (!Number.isInteger(memberId) || memberId <= 0) {
+      throw new HttpError(404, 'Member not found');
+    }
+
+    const user = findUserByMemberId(memberId);
+    if (user === undefined) {
+      throw new HttpError(404, 'Member not found');
+    }
+
+    await deactivateMember(memberId);
+
+    user.active = false;
+
+    res.status(200).json({
+      id: user.id,
+      memberId: user.memberId,
+      email: user.email,
+      role: user.role,
+      active: user.active,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const authRouter = Router();
 
 authRouter.post('/register', registerHandler);
 authRouter.post('/login', loginHandler);
+authRouter.post('/members/:id/deactivate', deactivateMemberHandler);

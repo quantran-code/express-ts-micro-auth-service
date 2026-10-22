@@ -60,3 +60,30 @@ export async function createMember(input: CreateMemberInput): Promise<MemberServ
   const created = (await response.json()) as MemberServiceMember;
   return created;
 }
+
+export async function deactivateMember(memberId: number): Promise<MemberServiceMember> {
+  let response: Awaited<ReturnType<typeof fetch>>;
+  try {
+    response = await fetch(`${config.memberServiceUrl}/internal/members/${memberId}/active`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        'x-service-key': config.serviceKey,
+      },
+      body: JSON.stringify({ active: false }),
+    });
+  } catch {
+    throw new HttpError(502, 'Unable to reach member-service');
+  }
+
+  if (!response.ok) {
+    const body = await readJsonBody(response);
+    throw new HttpError(
+      response.status,
+      readErrorMessage(body) ?? 'member-service request failed',
+    );
+  }
+
+  const updated = (await response.json()) as MemberServiceMember;
+  return updated;
+}

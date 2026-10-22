@@ -27,6 +27,7 @@ interface RegisterSuccessBody {
   name: string;
   email: string;
   role: string;
+  active: boolean;
 }
 
 interface LoginSuccessBody {
@@ -208,6 +209,7 @@ describe('POST /auth/register', () => {
       name: 'Ada',
       email: 'ada@library.test',
       role: 'member',
+      active: true,
     });
     expect(body).not.toHaveProperty('passwordHash');
 

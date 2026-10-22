@@ -8,6 +8,7 @@ export interface User {
   email: string;
   passwordHash: string;
   role: UserRole;
+  active: boolean;
 }
 
 export interface CreateUserInput {
@@ -15,6 +16,7 @@ export interface CreateUserInput {
   email: string;
   passwordHash: string;
   role: UserRole;
+  active?: boolean;
 }
 
 const SEEDED_LIBRARIAN_EMAIL = 'librarian@library.test';
@@ -31,6 +33,7 @@ export function createUser(input: CreateUserInput): User {
     email: input.email.trim().toLowerCase(),
     passwordHash: input.passwordHash,
     role: input.role,
+    active: input.active ?? true,
   };
   nextId += 1;
   users.push(user);
@@ -40,6 +43,10 @@ export function createUser(input: CreateUserInput): User {
 export function findUserByEmail(email: string): User | undefined {
   const needle = email.trim().toLowerCase();
   return users.find((user) => user.email.toLowerCase() === needle);
+}
+
+export function findUserByMemberId(memberId: number): User | undefined {
+  return users.find((user) => user.memberId === memberId);
 }
 
 export function resetUsers(): void {
